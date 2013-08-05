@@ -1,0 +1,152 @@
+<html>
+<head>
+<style type="text/css">
+.card { 
+
+height: 98px;
+width: 73px;
+background:url('cards.png') -1px 0; 
+position: absolute;
+z-index: -1;
+}
+
+#controls {
+position: absolute;
+z-index: 1;
+}
+</style>
+</head>
+<body>
+<!-- <div id="cardz" class="card"></div> -->
+<div id="controls">
+<input type="text" id="col">
+<input type="text" id="row">
+<br>
+<button onclick="changeCard()">change card</button>
+<br>
+<input type="text" id="toLeft">
+<input type="text" id="toTop">
+<button id="animateBtn">animate</button>
+<br>
+<button id="zIndexBtn">bring to front</button>
+<button id="zIndexBtn2">send to back</button>
+</div>
+<script src="jquery.js"></script>
+<script>
+  var topZ = 52;
+
+  function cardOffset(id, col, row) {
+    var colPx = 73 * col + 1;
+    var rowPx = 99 * row - row;
+    document.getElementById(id).style.background = "url('cards.png') -" + colPx + "px -" + rowPx + "px";
+  }
+
+function changeCard() {
+  var col = parseInt(document.getElementById("col").value);
+  var row = parseInt(document.getElementById("row").value);
+  
+  
+  cardOffset(col, row);
+}
+
+$("#animateBtn").click(function() {
+  var toLeft = parseInt($("#toLeft").val());
+  var toTop = parseInt($("#toTop").val());
+  $("#cardz").animate({
+    left:toLeft+'px',
+    top:toTop+'px'});
+});
+
+$("#zIndexBtn").click(function() {
+  $("#cardz").css('z-index', 2);
+});
+
+$("#zIndexBtn2").click(function() {
+  $("#cardz").css('z-index', -1);
+});
+
+function suitFromValue(value) {
+  var suits = ['C', 'H', 'S', 'D'];
+  return suits[value % 4];
+}
+
+function rankFromValue(value) {
+  var ranks = ['A', '2', '3', '4', '5', '6', '7', '9', 'T', 'J', 'Q', 'K', '8'];
+  return ranks[Math.floor(value/4)];
+}
+
+function rowFromValue(value) {
+  return value%4;
+}
+
+function colFromValue(value) {
+  var cols = [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 7];
+  return cols[Math.floor(value/4)];
+}
+
+function Card(value, x, y) {
+  this.value = value;
+  this.jid = "#card"+value;
+  this.faceUp = true;
+  this.x = x;
+  this.y = y;
+  this.selected = false;
+  this.suit = suitFromValue(value);
+  this.rank = rankFromValue(value);
+  this.col = colFromValue(value);
+  this.row = rowFromValue(value);
+  this.spriteX = 73*this.col + 1;
+  this.spriteY = 99*this.row - this.row;
+  this.face = "url('cards.png') -" + this.spriteX + "px -" + this.spriteY + "px";
+  
+  $('body').append('<div class="card" id="card'+value+'"></div>');
+  $(this.jid).css('left', x);
+  $(this.jid).css('top', y);
+  //alert(this.rank + " " + this.suit);
+  //cardOffset("card"+value, colFromValue(value), rowFromValue(value));
+  $(this.jid).css('background', this.face);
+
+  $(this.jid).data("selected", false);
+  
+  $(this.jid).click(function() {
+    //alert(this.id);
+    //alert($("#"+this.id).data("selected"));
+    var pos = $("#card"+value).position();
+    //alert(pos.left);
+    if ($("#"+this.id).data("selected") == true) {
+      //$("#card"+value).animate({ left: pos.left+'px', top: (pos.top + 28) + 'px' }, 100);
+      $("#"+this.id).animate({ left: '400px', top: '20px' }, 250);
+      $("#"+this.id).css('z-index', topZ++);
+      $("#"+this.id).data("selected", false);
+      //alert("selected = false");
+    }
+    else {
+      $("#card"+value).animate({ left: pos.left+'px', top: (pos.top - 28) + 'px' }, 100);
+      $("#"+this.id).data("selected", true);
+      //alert("selected = true");
+    }
+  });
+}
+
+Card.prototype.moveTo = function(x, y, dur) {
+  if (arguments.length == 2) {
+    dur = 400;
+  }
+  $(this.jid).animate({ left: x+'px', top: y+'px'}, dur);
+  this.x = x;
+  this.y = y;
+}
+Card.prototype.zIndex = function(index) {
+  $(this.jid).css('z-index', index);
+}
+
+var cards = [];
+
+for(var i = 0; i < 52; i++) {
+  cards[i] = new Card(i, 5 + i*16, 200);
+  cards[i].zIndex(i);
+}
+
+</script>
+</body>
+</html>
