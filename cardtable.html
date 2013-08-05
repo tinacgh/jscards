@@ -1,0 +1,298 @@
+<html>
+<head>
+<style type="text/css">
+.card { 
+
+height: 98px;
+width: 73px;
+background:url('cards.png') -1px 0; 
+position: absolute;
+z-index: -1;
+}
+
+#controls {
+position: absolute;
+z-index: 1;
+}
+</style>
+</head>
+<body>
+<div id="controls">
+  <button id="playSelBtn">play selected</button>
+</div>
+<script src="jquery.1.3.1.min.js"></script>
+<script src="jquery.fxqueues-2.0.3.js"></script>
+<script>
+  var topZ = 2;
+
+function log(txt) {
+  console.log(txt);
+}
+
+function suitFromValue(value) {
+  var suits = ['C', 'H', 'S', 'D'];
+  return suits[value % 4];
+}
+
+function rankFromValue(value) {
+  var ranks = ['A', '2', '3', '4', '5', '6', '7', '9', 'T', 'J', 'Q', 'K', '8'];
+  return ranks[Math.floor(value/4)];
+}
+
+function rowFromValue(value) {
+  return value%4;
+}
+
+function colFromValue(value) {
+  var cols = [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 7];
+  return cols[Math.floor(value/4)];
+}
+
+function shuffle(array) {
+  var counter = array.length, temp, index;
+  while (counter > 0) {
+    index = Math.floor(Math.random() * counter);
+    counter--;
+    temp = array[counter];
+    array[counter] = array[index];
+    array[index] = temp;
+  }
+  return array;
+}
+
+function Card(value, x, y, z, h) {
+  this.value = value;
+  this.jid = "#card"+value;
+  this.x = x;
+  this.y = y;
+
+  this.hand = h;
+  
+  this.selected = false;
+  this.alive = true;
+  this.suit = suitFromValue(value);
+  this.rank = rankFromValue(value);
+  this.col = colFromValue(value);
+  this.row = rowFromValue(value);
+  this.spriteX = 73*this.col + 1;
+  this.spriteY = 98*this.row;
+  this.face = "url('cards.png') -" + this.spriteX + "px -" + this.spriteY + "px";
+  
+  $('body').append('<div class="card" id="card'+value+'"></div>');
+  $(this.jid).css('left', x);
+  $(this.jid).css('top', y);
+  $(this.jid).css('background', this.face);
+  $(this.jid).css('z-index', z);
+  
+  $(this.jid).data("selected", false);
+  
+  var cardObj = this;
+  $(this.jid).click(function() {
+    if (cardObj.alive) {
+      var pos = $(this).position();
+      if (cardObj.selected) {
+        cardObj.moveTo(pos.left, pos.top + 28, 100);
+        cardObj.selected = false;
+        cardObj.hand.removeFromSel(cardObj);
+      }
+      else {  // select the card
+        cardObj.moveTo(pos.left, pos.top - 28, 100);
+        cardObj.selected = true;
+        cardObj.hand.addToSel(cardObj);
+        
+        log(cardObj.hand.getSelValues());
+      }
+    }
+  });
+}
+
+Card.prototype.facedown = function() {
+  $(this.jid).css('background', "url('cardback.png') no-repeat");
+}
+Card.prototype.faceup = function() {
+  //$(this.jid).css('background', this.face);
+  $(this.jid).animate({ background: this.face}, {queue: "global"});
+}  
+Card.prototype.moveTo = function(x, y, dur) {
+  if (arguments.length == 2) {
+    dur = 250;
+//    delay = 0;
+  }
+//  $(this.jid).delay(delay).animate({ left: x+'px', top: y+'px'}, dur);
+  $(this.jid).animate({ left: x+'px', top: y+'px'}, {duration: dur, queue: "global"});
+  this.x = x;
+  this.y = y;
+}
+Card.prototype.zIndex = function(index) {
+  $(this.jid).css('z-index', index);
+}
+
+function Hand(desc, left, top) {
+  this.desc = desc;
+  this.left = left;
+  this.top = top;
+  this.cards = [];
+  this.selected = [];
+}
+
+Hand.prototype.addCard = function(c) {
+  this.cards.push(c);
+}
+Hand.prototype.removeCard = function(c) {
+  var index = this.cards.indexOf(c);
+  if (index != -1) {
+    this.cards.splice(index, 1);
+  }
+}
+Hand.prototype.getCards = function() {
+  var output = "";
+  for (var i = 0; i < this.cards.length; i++) {
+    output += this.cards[i].value + " ";
+  }
+  return output;
+}
+Hand.prototype.getCardsValues = function() {
+  var output = [];
+  for (var i = 0; i < this.cards.length; i++) {
+    output.push(this.cards[i].value);
+  }
+  return output;
+}
+Hand.prototype.getSelValues = function() {
+  var output = "";
+  for (var i = 0; i < this.selected.length; i++) {
+    output += this.selected[i].value + " ";
+  }
+  return output;
+}
+Hand.prototype.getDesc = function() {
+  return this.desc;
+}
+Hand.prototype.addToSel = function(c) {
+  this.selected.push(c);
+}
+Hand.prototype.removeFromSel = function(c) {
+  var index = this.selected.indexOf(c);
+  if (index != -1) {
+    this.selected.splice(index, 1);
+  }
+}
+Hand.prototype.selectNone = function () {
+  this.selected = [];
+}
+Hand.prototype.getSel = function() {
+  return this.selected;
+}
+Hand.prototype.sort = function() {
+  this.cards.sort(function(a,b) {
+    return a.value - b.value;
+  });
+}
+Hand.prototype.rearrange = function() {
+  this.sort();
+  for (var i = 0; i < this.cards.length; i++) {
+    this.cards[i].zIndex(topZ++);
+    this.cards[i].faceup();
+    this.cards[i].moveTo(this.left + i*16, this.top, 100);
+  }
+}
+Hand.prototype.facedown = function() {
+  for (var i = 0; i < this.cards.length; i++) {
+    this.cards[i].facedown();
+  }
+}
+Hand.prototype.faceup = function() {
+  for (var i = 0; i < this.cards.length; i++) {
+    this.cards[i].faceup();
+    this.cards[i].alive = true;
+  }
+}
+Hand.prototype.collect = function(left, top, delay) {
+  for (var i = 0; i < this.cards.length; i++) {
+    this.cards[i].moveTo(left, top, delay);
+  }
+}
+Hand.prototype.passFirst = function(toHand) {
+  var c = this.cards[0];
+  c.hand = toHand;
+  toHand.addCard(c);
+  this.removeCard(c);
+}
+var selLeft = 300;
+var selTop = 30;
+var selHand = new Hand("none", selLeft, selTop);
+
+function play(fromHand) {
+  selHand.facedown();
+  selHand.collect(selLeft, selTop);
+  var sel = fromHand.getSel();
+  selHand = new Hand("selection", selLeft, selTop);
+
+  for (var i = 0; i < sel.length; i++) {
+    selHand.addCard(sel[i]);
+    fromHand.removeCard(sel[i]);
+    sel[i].selected = false;
+    sel[i].alive = false;
+  }
+  selHand.rearrange();
+  fromHand.rearrange();
+  fromHand.selectNone();
+}
+
+var deck = new Hand("the deck", 5, 200);
+
+var vals = [];
+for (var i = 0; i < 52; i++) {
+  vals.push(i);
+}
+vals = shuffle(vals);
+
+for (var i = 0; i < 52; i++) {
+  //c = new Card(vals[i], Math.floor(Math.random() * 700),
+  //             Math.floor(Math.random() * 300), topZ++, deck);
+  c = new Card(vals[i], 350, 150, topZ++, deck);
+  c.alive = false;
+  c.facedown();
+  deck.addCard(c);
+}
+
+//deck.collect(350,150,50);
+
+var human = new Hand("human player", 200, 300);
+deck.passFirst(human);
+human.collect(human.left, human.top, 100);
+deck.passFirst(human);
+human.collect(human.left, human.top, 100);
+deck.passFirst(human);
+human.collect(human.left, human.top, 100);
+deck.passFirst(human);
+human.collect(human.left, human.top, 100);
+deck.passFirst(human);
+human.collect(human.left, human.top, 100);
+deck.passFirst(human);
+human.collect(human.left, human.top, 100);
+
+human.rearrange();
+
+$("#playSelBtn").click(function() {
+  alert($.fxqueue("global").length);
+  $.fxqueue("global").start();
+  play(human);
+});
+
+/*
+var randHand = new Hand("some hand");
+randHand.addCard(new Card(9, 5, 100, topZ++, randHand));
+randHand.addCard(new Card(1, 21, 100, topZ++, randHand));
+randHand.addCard(new Card(12, 37, 100, topZ++, randHand));
+randHand.addCard(new Card(3, 52, 100, topZ++, randHand));
+randHand.addCard(new Card(11, 68, 100, topZ++, randHand));
+log(randHand.getCardsValues());
+randHand.sort();
+log(randHand.getCardsValues());
+*/
+
+
+</script>
+</body>
+</html>

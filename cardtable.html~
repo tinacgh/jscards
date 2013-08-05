@@ -22,8 +22,6 @@ z-index: 1;
 <input type="text" id="col">
 <input type="text" id="row">
 <br>
-<button onclick="changeCard()">change card</button>
-<br>
 <input type="text" id="toLeft">
 <input type="text" id="toTop">
 <button id="animateBtn">animate</button>
@@ -35,19 +33,6 @@ z-index: 1;
 <script>
   var topZ = 52;
 
-  function cardOffset(id, col, row) {
-    var colPx = 73 * col + 1;
-    var rowPx = 98 * row;
-    document.getElementById(id).style.background = "url('cards.png') -" + colPx + "px -" + rowPx + "px";
-  }
-
-function changeCard() {
-  var col = parseInt(document.getElementById("col").value);
-  var row = parseInt(document.getElementById("row").value);
-  
-  
-  cardOffset(col, row);
-}
 
 $("#animateBtn").click(function() {
   var toLeft = parseInt($("#toLeft").val());
@@ -99,7 +84,7 @@ function Card(value, x, y, h) {
   this.col = colFromValue(value);
   this.row = rowFromValue(value);
   this.spriteX = 73*this.col + 1;
-  this.spriteY = 99*this.row - this.row;
+  this.spriteY = 98*this.row;
   this.face = "url('cards.png') -" + this.spriteX + "px -" + this.spriteY + "px";
   
   $('body').append('<div class="card" id="card'+value+'"></div>');
@@ -118,12 +103,12 @@ function Card(value, x, y, h) {
       cardObj.selected = false;
       cardObj.hand.removeFromSel(cardObj);
     }
-    else {
-      //$(this).animate({ left: pos.left+'px', top: (pos.top - 28) + 'px' }, 100);
+    else {  // select the card
       cardObj.moveTo(pos.left, pos.top - 28, 100);
       cardObj.selected = true;
       cardObj.hand.addToSel(cardObj);
-      alert(cardObj.hand.getSel());
+      
+      //alert(cardObj.hand.getSel());
     }
   });
 }
