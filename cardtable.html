@@ -18,12 +18,17 @@ z-index: 1;
 </head>
 <body>
 <div id="controls">
-  <button id="playSelBtn">play selected</button>
+  <button id="playSelBtn">play selected</button><br>
+  <button id="playCPULeftBtn">play cpu left</button><br>
+    <button id="playCPUTopBtn">play cpu top</button><br>
+  <button id="playCPURightBtn">play cpu right</button><br>
 </div>
 <script src="jquery.1.3.1.min.js"></script>
 <script src="jquery.fxqueues-2.0.3.js"></script>
-<script>
-  var topZ = 2;
+    <script>
+
+// GLOBAL
+var topZ = 2;
 
 function log(txt) {
   console.log(txt);
@@ -91,12 +96,12 @@ function Card(value, x, y, z, h) {
     if (cardObj.alive) {
       var pos = $(this).position();
       if (cardObj.selected) {
-        cardObj.moveTo(pos.left, pos.top + 28, 100);
+          cardObj.moveTo(pos.left, pos.top + 28, false, 100);
         cardObj.selected = false;
         cardObj.hand.removeFromSel(cardObj);
       }
       else {  // select the card
-        cardObj.moveTo(pos.left, pos.top - 28, 100);
+          cardObj.moveTo(pos.left, pos.top - 28, false, 100);
         cardObj.selected = true;
         cardObj.hand.addToSel(cardObj);
         
@@ -110,16 +115,21 @@ Card.prototype.facedown = function() {
   $(this.jid).css('background', "url('cardback.png') no-repeat");
 }
 Card.prototype.faceup = function() {
-  //$(this.jid).css('background', this.face);
-  $(this.jid).animate({ background: this.face}, {queue: "global"});
+    $(this.jid).css('background', this.face);
+    this.alive = true;
+  //  $(this.jid).animate({ background: this.face, left: '0px' }, {queue: "global"});
 }  
-Card.prototype.moveTo = function(x, y, dur) {
-  if (arguments.length == 2) {
+Card.prototype.moveTo = function(x, y, queue, dur) {
+  if (arguments.length == 3) {
     dur = 250;
 //    delay = 0;
   }
-//  $(this.jid).delay(delay).animate({ left: x+'px', top: y+'px'}, dur);
-  $(this.jid).animate({ left: x+'px', top: y+'px'}, {duration: dur, queue: "global"});
+    //  $(this.jid).delay(delay).animate({ left: x+'px', top: y+'px'}, dur);
+  if (queue) {
+    $(this.jid).animate({ left: x+'px', top: y+'px'}, {duration: dur, queue: "global"});
+  } else {
+    $(this.jid).animate({ left: x+'px', top: y+'px'}, {duration: dur });
+  }
   this.x = x;
   this.y = y;
 }
@@ -188,12 +198,19 @@ Hand.prototype.sort = function() {
     return a.value - b.value;
   });
 }
-Hand.prototype.rearrange = function() {
+Hand.prototype.rearrange = function(display) {
   this.sort();
   for (var i = 0; i < this.cards.length; i++) {
     this.cards[i].zIndex(topZ++);
-    this.cards[i].faceup();
-    this.cards[i].moveTo(this.left + i*16, this.top, 100);
+    if (display) {
+      this.cards[i].faceup();
+    }
+    this.cards[i].moveTo(this.left + i*16, this.top, true, 100);
+  }
+}
+Hand.prototype.collapse = function() {
+  for (var i = 0; i < this.cards.length; i++) {
+    this.cards[i].moveTo(this.left, this.top, true, 100);
   }
 }
 Hand.prototype.facedown = function() {
@@ -207,9 +224,9 @@ Hand.prototype.faceup = function() {
     this.cards[i].alive = true;
   }
 }
-Hand.prototype.collect = function(left, top, delay) {
+Hand.prototype.collect = function(left, top, queue, delay) {
   for (var i = 0; i < this.cards.length; i++) {
-    this.cards[i].moveTo(left, top, delay);
+    this.cards[i].moveTo(left, top, queue, delay);
   }
 }
 Hand.prototype.passFirst = function(toHand) {
@@ -218,8 +235,14 @@ Hand.prototype.passFirst = function(toHand) {
   toHand.addCard(c);
   this.removeCard(c);
 }
-var selLeft = 300;
-var selTop = 30;
+
+// GLOBALS
+var selLeft = 220;
+var selTop = 150;
+
+var deckLeft = 10;
+var deckTop = 280;
+
 var selHand = new Hand("none", selLeft, selTop);
 
 function play(fromHand) {
@@ -228,14 +251,15 @@ function play(fromHand) {
   var sel = fromHand.getSel();
   selHand = new Hand("selection", selLeft, selTop);
 
-  for (var i = 0; i < sel.length; i++) {
-    selHand.addCard(sel[i]);
-    fromHand.removeCard(sel[i]);
-    sel[i].selected = false;
-    sel[i].alive = false;
-  }
-  selHand.rearrange();
-  fromHand.rearrange();
+    for (var i = 0; i < sel.length; i++) {
+      sel[i].zIndex(topZ++);
+      selHand.addCard(sel[i]);
+      fromHand.removeCard(sel[i]);
+      sel[i].selected = false;
+      sel[i].alive = false;
+    }
+  selHand.rearrange(true);
+  fromHand.rearrange(false);
   fromHand.selectNone();
 }
 
@@ -246,11 +270,12 @@ for (var i = 0; i < 52; i++) {
   vals.push(i);
 }
 vals = shuffle(vals);
+log(vals);
 
 for (var i = 0; i < 52; i++) {
   //c = new Card(vals[i], Math.floor(Math.random() * 700),
   //             Math.floor(Math.random() * 300), topZ++, deck);
-  c = new Card(vals[i], 350, 150, topZ++, deck);
+  c = new Card(vals[i], deckLeft, deckTop, topZ++, deck);
   c.alive = false;
   c.facedown();
   deck.addCard(c);
@@ -258,26 +283,45 @@ for (var i = 0; i < 52; i++) {
 
 //deck.collect(350,150,50);
 
-var human = new Hand("human player", 200, 300);
-deck.passFirst(human);
-human.collect(human.left, human.top, 100);
-deck.passFirst(human);
-human.collect(human.left, human.top, 100);
-deck.passFirst(human);
-human.collect(human.left, human.top, 100);
-deck.passFirst(human);
-human.collect(human.left, human.top, 100);
-deck.passFirst(human);
-human.collect(human.left, human.top, 100);
-deck.passFirst(human);
-human.collect(human.left, human.top, 100);
+var human = new Hand("human player", 160, 300);
+var cpu1 = new Hand("CPU 1", 5, 150);
+var cpu2 = new Hand("CPU 2", 250, 10);
+var cpu3 = new Hand("CPU 3", 500, 150);
+//var cpu3 = new Hand("CPU 3", 5, 180);
 
-human.rearrange();
+for (var i = 0; i < 13; i++) {
+  deck.passFirst(human);
+  deck.passFirst(cpu1);
+  deck.passFirst(cpu2);
+  deck.passFirst(cpu3);
+}
+
+human.rearrange(true);
+//cpu1.rearrange(false);
+//cpu2.rearrange(false);
+//cpu3.rearrange(false);
+
+//cpu1.rearrange(true);
+//cpu2.rearrange(true);
+//cpu3.rearrange(true);
+cpu1.collapse();
+cpu2.collapse();
+cpu3.collapse();
 
 $("#playSelBtn").click(function() {
-  alert($.fxqueue("global").length);
-  $.fxqueue("global").start();
   play(human);
+});
+
+$("#playCPULeftBtn").click(function() {
+  play(cpu1);
+});
+
+$("#playCPUTopBtn").click(function() {
+  play(cpu2);
+});
+
+$("#playCPURightBtn").click(function() {
+  play(cpu3);
 });
 
 // flip cards
